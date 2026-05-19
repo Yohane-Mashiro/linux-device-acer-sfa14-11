@@ -26,16 +26,27 @@ jobs:
       - name: Install device-tree-compiler
         run: sudo apt-get update && sudo apt-get install -y device-tree-compiler
 
+      - name: Fetch kernel DTS sources (Linaro linux-qcom-laptops)
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch linux-qcom-laptops-v6.19-rc8 https://github.com/linaro/linux.git linux-src
+
       - name: Build DTBs
         run: |
           set -euo pipefail
           mkdir -p dist
-          # Compile all top-level .dts files into .dtb with cpp preprocessing
+          KERNEL_DTS="linux-src/arch/arm64/boot/dts/qcom"
+          KERNEL_DTS_ROOT="linux-src/arch/arm64/boot/dts"
+          KERNEL_INCLUDE="linux-src/include"
           for dts in *.dts; do
             [ -f "$dts" ] || continue
             pp="dist/${dts%.dts}.pp.dts"
             dtb="dist/${dts%.dts}.dtb"
-            cpp -nostdinc -I . -I config -undef -x assembler-with-cpp "$dts" > "$pp"
+            cpp -nostdinc -undef -x assembler-with-cpp \
+              -I . -I config \
+              -I "$KERNEL_DTS" -I "$KERNEL_DTS_ROOT" \
+              -I "$KERNEL_INCLUDE" -I "$KERNEL_INCLUDE/dt-bindings" \
+              "$dts" > "$pp"
             dtc -I dts -O dtb -o "$dtb" "$pp"
             echo "Built $dtb"
           done
