@@ -30,11 +30,13 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          # Compile all top-level .dts files into .dtb
+          # Compile all top-level .dts files into .dtb with cpp preprocessing
           for dts in *.dts; do
             [ -f "$dts" ] || continue
+            pp="dist/${dts%.dts}.pp.dts"
             dtb="dist/${dts%.dts}.dtb"
-            dtc -I dts -O dtb -i . -i config -o "$dtb" "$dts"
+            cpp -nostdinc -I . -I config -undef -x assembler-with-cpp "$dts" > "$pp"
+            dtc -I dts -O dtb -o "$dtb" "$pp"
             echo "Built $dtb"
           done
 
